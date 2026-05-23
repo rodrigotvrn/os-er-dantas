@@ -204,7 +204,7 @@ tbody tr:hover td{background:#FAFAF8}
         <div class="field"><label>E-mail para NF</label><input type="email" id="f-email" placeholder="financeiro@orgao.gov.br" style="min-width:0"></div>
         <div class="field"><label>Nº do Contrato</label><input type="text" id="f-contrato" placeholder="000/0000"></div>
         <div class="field"><label>Nº do Empenho</label><input type="text" id="f-empenho" placeholder="(se houver)"></div>
-        <div class="field col-span"><label>Descrição do Evento</label><input type="text" id="f-evento" placeholder="Ex: Transmissão ao vivo da sessão ordinária de..."></div>
+        <div class="field col-span"><label>Descrição do Evento</label><textarea id="f-evento" placeholder="Ex: Transmissão ao vivo da sessão ordinária de..." rows="1" oninput="autoResize(this)" style="resize:none;overflow:hidden;line-height:1.5"></textarea></div>
       </div>
       <div class="items-wrap">
         <div class="sec-label">Itens / Serviços</div>
@@ -392,7 +392,7 @@ async function deleteCliente(id){
 function addRow(desc='',qty=1,unit=''){
   rowCount++;const id=rowCount;
   const tr=document.createElement('tr');tr.id='row-'+id;
-  tr.innerHTML=`<td><input type="text" placeholder="Descrição do serviço..." value="${desc}"></td><td class="ctr"><input type="number" min="1" value="${qty}" id="qty-${id}" oninput="calcRow(${id})" style="width:50px;text-align:center"></td><td class="rgt"><input type="text" placeholder="0,00" value="${unit}" id="unit-${id}" oninput="calcRow(${id})" style="text-align:right"></td><td class="tot" id="tot-${id}">R$ 0,00</td><td><button class="btn-del" onclick="delRow(${id})">×</button></td>`;
+  tr.innerHTML=`<td><textarea rows="1" placeholder="Descrição do serviço..." oninput="autoResize(this)" style="border:none;background:transparent;width:100%;font-size:13px;color:var(--texto);font-family:inherit;padding:2px 0;resize:none;overflow:hidden;line-height:1.5">${desc}</textarea></td><td class="ctr"><input type="number" min="1" value="${qty}" id="qty-${id}" oninput="calcRow(${id})" style="width:50px;text-align:center"></td><td class="rgt"><input type="text" placeholder="0,00" value="${unit}" id="unit-${id}" oninput="calcRow(${id})" style="text-align:right"></td><td class="tot" id="tot-${id}">R$ 0,00</td><td><button class="btn-del" onclick="delRow(${id})">×</button></td>`;
   document.getElementById('items-body').appendChild(tr);
   if(unit)calcRow(id);
 }
@@ -416,9 +416,10 @@ function calcTotals(){
 
 function getItems(){
   return Array.from(document.querySelectorAll('#items-body tr')).map(tr=>{
+    const desc=tr.querySelector('textarea');
     const inputs=tr.querySelectorAll('input');
-    if(!inputs.length)return null;
-    return{descricao:inputs[0].value,quantidade:parseFloat(inputs[1].value)||1,valor_unitario:parseBR(inputs[2].value)};
+    if(!desc&&!inputs.length)return null;
+    return{descricao:desc?desc.value:inputs[0].value,quantidade:parseFloat(inputs[0].value)||1,valor_unitario:parseBR(inputs[1].value)};
   }).filter(Boolean);
 }
 
@@ -505,6 +506,7 @@ async function editOS(id){
   document.getElementById('f-empenho').value=os.empenho||'';
   document.getElementById('f-email').value=os.email_nf||'';
   document.getElementById('f-evento').value=os.descricao_evento||'';
+  setTimeout(()=>autoResize(document.getElementById('f-evento')),50);
   document.getElementById('f-obs').value=os.observacoes||'';
 
   // Selecionar cliente
@@ -539,11 +541,12 @@ async function duplicateOS(id){
   document.getElementById('edit-badge').style.display='none';
   document.getElementById('btn-salvar').textContent='💾 Salvar OS';
 
-  document.getElementById('f-data').value='';  // data em branco — é um novo evento
+  document.getElementById('f-data').value='';
   document.getElementById('f-contrato').value=os.contrato||'';
   document.getElementById('f-empenho').value='';
   document.getElementById('f-email').value=os.email_nf||'';
   document.getElementById('f-evento').value=os.descricao_evento||'';
+  setTimeout(()=>autoResize(document.getElementById('f-evento')),50);
   document.getElementById('f-obs').value=os.observacoes||'';
 
   const sel=document.getElementById('f-cliente-sel');
@@ -708,6 +711,7 @@ function switchTab(t,btn){
 
 function fmt(v){return parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function parseBR(s){return parseFloat((s||'').toString().replace(/\./g,'').replace(',','.'))||0}
+function autoResize(el){el.style.height='auto';el.style.height=el.scrollHeight+'px'}
 </script>
 </body>
 </html>
