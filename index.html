@@ -30,10 +30,11 @@ main{max-width:800px;margin:0 auto;padding:28px 20px}
 .ch-num{color:#EDE7DA;font-size:22px;font-weight:600;margin-top:2px}
 .ch-divider{height:1px;background:#2F6FED;opacity:.35;margin-top:12px}
 .meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:18px 22px;border-bottom:1px solid var(--borda)}
+.meta-grid .field{min-width:0}
 .col-span{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:500}
-.field input,.field select,.field textarea{border:1px solid var(--borda);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--texto);background:#fff;font-family:inherit;transition:border-color .15s}
+.field input,.field select,.field textarea{border:1px solid var(--borda);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--texto);background:#fff;font-family:inherit;transition:border-color .15s;width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--ativo);box-shadow:0 0 0 3px rgba(47,111,237,.1)}
 .field select{cursor:pointer}
 .field textarea{resize:none;min-height:52px}
@@ -200,7 +201,7 @@ tbody tr:hover td{background:#FAFAF8}
             <option value="">— Selecionar cliente —</option>
           </select>
         </div>
-        <div class="field"><label>E-mail para NF</label><input type="email" id="f-email" placeholder="financeiro@..."></div>
+        <div class="field"><label>E-mail para NF</label><input type="email" id="f-email" placeholder="financeiro@orgao.gov.br" style="min-width:0"></div>
         <div class="field"><label>Nº do Contrato</label><input type="text" id="f-contrato" placeholder="000/0000"></div>
         <div class="field"><label>Nº do Empenho</label><input type="text" id="f-empenho" placeholder="(se houver)"></div>
         <div class="field col-span"><label>Descrição do Evento</label><input type="text" id="f-evento" placeholder="Ex: Transmissão ao vivo da sessão ordinária de..."></div>
@@ -290,7 +291,8 @@ init();
 
 async function loadNextNum(){
   try{
-    const{data,error}=await sb.rpc('next_os_number');
+    // peek: só visualiza, não incrementa
+    const{data,error}=await sb.rpc('peek_os_number');
     if(error)throw error;
     nextNum=data;
     document.getElementById('os-num-disp').innerHTML=`<span style="color:#EDE7DA">OS-${String(data).padStart(3,'0')}</span>`;
@@ -444,24 +446,22 @@ async function saveOS(){
   };
 
   if(editingId){
-    // UPDATE
+    // UPDATE — não consome número novo
     const{error:upErr}=await sb.from('ordens_servico').update(osData).eq('id',editingId);
     if(upErr){alert('Erro ao atualizar OS: '+upErr.message);btn.disabled=false;btn.textContent='💾 Salvar OS';return}
     await sb.from('os_itens').delete().eq('os_id',editingId);
-    if(items.length){
-      await sb.from('os_itens').insert(items.map(i=>({...i,os_id:editingId})));
-    }
+    if(items.length) await sb.from('os_itens').insert(items.map(i=>({...i,os_id:editingId})));
     editingId=null;
     document.getElementById('edit-badge').style.display='none';
     btn.textContent='💾 Salvar OS';
   } else {
-    // INSERT
-    osData.numero=nextNum;
+    // INSERT — só agora incrementa o sequencial
+    const{data:numData,error:numErr}=await sb.rpc('next_os_number');
+    if(numErr){alert('Erro ao gerar número da OS: '+numErr.message);btn.disabled=false;btn.textContent='💾 Salvar OS';return}
+    osData.numero=numData;
     const{data:os,error:osErr}=await sb.from('ordens_servico').insert(osData).select().single();
     if(osErr){alert('Erro ao salvar OS: '+osErr.message);btn.disabled=false;btn.textContent='💾 Salvar OS';return}
-    if(items.length){
-      await sb.from('os_itens').insert(items.map(i=>({...i,os_id:os.id})));
-    }
+    if(items.length) await sb.from('os_itens').insert(items.map(i=>({...i,os_id:os.id})));
     btn.textContent='💾 Salvar OS';
     clearForm(false);
     await loadNextNum();
